@@ -2,8 +2,10 @@ import sqlite3
 from sqlite3 import Error
 from urllib.request import pathname2url
 
+
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.action_chains import ActionChains
 
 import numpy
 from math import floor
@@ -391,6 +393,7 @@ def match_list_create(leagues_url):
         except:
             continue
         # driver.close()
+    match_list = match_list[:5]
     return match_list
 
 
@@ -495,80 +498,47 @@ def league_data_home(leagues_url):
     for league_url in leagues_url:
         driver.get(str(league_url[0]))
 
-        try:
-            driver.find_element_by_xpath('//*[@id="tabitem-table-home"]/span/a').click()
-            tablerow = driver.find_element_by_xpath('//*[@id="table-type-1"]/tbody').find_elements_by_tag_name('tr')
-        except:
-            driver.find_element_by_xpath('//*[@id="tabitem-table"]/span/a').click()
-            driver.find_element_by_xpath('//*[@id="tabitem-table-home"]/span/a').click()
-            tablerow = driver.find_element_by_xpath('//*[@id="table-type-2"]/tbody').find_elements_by_tag_name('tr')
-
+        but = driver.find_element_by_id("tabitem-table-home").find_element_by_tag_name('a')
+        actions = ActionChains(driver)
+        actions.move_to_element(but).perform()
+        driver.execute_script("arguments[0].click();", but)
+        tablerow = driver.find_element_by_class_name("stats-table-container").find_elements_by_tag_name('tr')
+        print(f"Tablerows: {len(tablerow)}")
+        #tablerow = driver.find_element_by_xpath('//*[@id="table-type-1"]/tbody').find_elements_by_tag_name('tr')
         counter = 1
 
-        for row in tablerow:
+        for row in tablerow[1:]:
             country_name = driver.find_element_by_xpath('//*[@id="mc"]/h2/a[2]').get_attribute('textContent')
             league_name = driver.find_element_by_xpath('//*[@id="fscon"]/div[1]/div[2]').get_attribute('textContent')
             country_league_name = country_name + ' ' + league_name
             home_position = counter
             home_total_clubs = len(tablerow)
-            home_team_name = row.find_element_by_xpath(
-                '//*[@id="table-type-2"]/tbody/tr[' + str(counter) + ']/td[2]/span[2]/a').get_attribute('textContent')
-            home_team_id = row.find_element_by_xpath(
-                '//*[@id="table-type-2"]/tbody/tr[' + str(counter) + ']/td[2]/span[2]/a').get_attribute('onclick')[
-                           -12:-4]
-            home_matches_played = int(
-                row.find_element_by_xpath('//*[@id="table-type-2"]/tbody/tr[' + str(counter) + ']/td[3]').get_attribute(
-                    'textContent'))
-            home_matches_won = int(
-                row.find_element_by_xpath('//*[@id="table-type-2"]/tbody/tr[' + str(counter) + ']/td[4]').get_attribute(
-                    'textContent'))
-            home_matches_draw = int(
-                row.find_element_by_xpath('//*[@id="table-type-2"]/tbody/tr[' + str(counter) + ']/td[5]').get_attribute(
-                    'textContent'))
-            home_matches_loss = int(
-                row.find_element_by_xpath('//*[@id="table-type-2"]/tbody/tr[' + str(counter) + ']/td[6]').get_attribute(
-                    'textContent'))
-            goal_fa = str(
-                row.find_element_by_xpath('//*[@id="table-type-2"]/tbody/tr[' + str(counter) + ']/td[7]').get_attribute(
-                    'textContent')).split(':')
+            tds = row.find_elements_by_tag_name('td')
+            print(f"TDS: {len(tds)}")
+            home_team_name = tds[1].find_element_by_tag_name('a').get_attribute('textContent')
+            home_team_id = tds[1].find_element_by_tag_name('a').get_attribute('onclick')[-12:-4]
+            home_matches_played = int(tds[2].get_attribute('textContent'))
+            home_matches_won = int(tds[3].get_attribute('textContent'))
+            home_matches_draw = int(tds[4].get_attribute('textContent'))
+            home_matches_loss = int(tds[5].get_attribute('textContent'))
+            goal_fa = str(tds[6].get_attribute('textContent')).split(':')
             home_goal_diff = int(goal_fa[0]) - int(goal_fa[1])
 
             form_list = []
             home_team_form = 0
 
-            try:
-                form_game1 = row.find_element_by_xpath(
-                    '//*[@id="table-type-2"]/tbody/tr[' + str(counter) + ']/td[9]/div/a[2]').get_attribute('class')[13]
-                form_list.append(form_game1)
-                form_game2 = row.find_element_by_xpath(
-                    '//*[@id="table-type-2"]/tbody/tr[' + str(counter) + ']/td[9]/div/a[3]').get_attribute('class')[13]
-                form_list.append(form_game2)
-                form_game3 = row.find_element_by_xpath(
-                    '//*[@id="table-type-2"]/tbody/tr[' + str(counter) + ']/td[9]/div/a[4]').get_attribute('class')[13]
-                form_list.append(form_game3)
-                form_game4 = row.find_element_by_xpath(
-                    '//*[@id="table-type-2"]/tbody/tr[' + str(counter) + ']/td[9]/div/a[5]').get_attribute('class')[13]
-                form_list.append(form_game4)
-                form_game5 = row.find_element_by_xpath(
-                    '//*[@id="table-type-2"]/tbody/tr[' + str(counter) + ']/td[9]/div/a[6]').get_attribute('class')[26]
-                form_list.append(form_game5)
+            formlist = row.find_element_by_class_name('matches-5').find_elements_by_tag_name('a')
 
-            except:
-                form_game1 = row.find_element_by_xpath(
-                    '//*[@id="table-type-2"]/tbody/tr[' + str(counter) + ']/td[9]/div/a[1]').get_attribute('class')[13]
-                form_list.append(form_game1)
-                form_game2 = row.find_element_by_xpath(
-                    '//*[@id="table-type-2"]/tbody/tr[' + str(counter) + ']/td[9]/div/a[2]').get_attribute('class')[13]
-                form_list.append(form_game2)
-                form_game3 = row.find_element_by_xpath(
-                    '//*[@id="table-type-2"]/tbody/tr[' + str(counter) + ']/td[9]/div/a[3]').get_attribute('class')[13]
-                form_list.append(form_game3)
-                form_game4 = row.find_element_by_xpath(
-                    '//*[@id="table-type-2"]/tbody/tr[' + str(counter) + ']/td[9]/div/a[4]').get_attribute('class')[13]
-                form_list.append(form_game4)
-                form_game5 = row.find_element_by_xpath(
-                    '//*[@id="table-type-2"]/tbody/tr[' + str(counter) + ']/td[9]/div/a[5]').get_attribute('class')[26]
-                form_list.append(form_game5)
+            form_game1 = formlist[0].get_attribute('class')[13]
+            form_list.append(form_game1)
+            form_game2 = formlist[1].get_attribute('class')[13]
+            form_list.append(form_game2)
+            form_game3 = formlist[2].get_attribute('class')[13]
+            form_list.append(form_game3)
+            form_game4 = formlist[3].get_attribute('class')[13]
+            form_list.append(form_game4)
+            form_game5 = formlist[4].get_attribute('class')[26]
+            form_list.append(form_game5)
 
             for form in form_list:
                 if form == 'w':
@@ -605,13 +575,11 @@ def league_data_away(leagues_url):
     for league_url in leagues_url:
         driver.get(str(league_url[0]))
 
-        try:
-            driver.find_element_by_xpath('//*[@id="tabitem-table-away"]/span/a').click()
-            tablerow = driver.find_element_by_xpath('//*[@id="table-type-1"]/tbody').find_elements_by_tag_name('tr')
-        except:
-            driver.find_element_by_xpath('//*[@id="tabitem-table"]/span/a').click()
-            driver.find_element_by_xpath('//*[@id="tabitem-table-away"]/span/a').click()
-            tablerow = driver.find_element_by_xpath('//*[@id="table-type-3"]/tbody').find_elements_by_tag_name('tr')
+        but = driver.find_element_by_id("tabitem-table-away").find_element_by_tag_name('a')
+        actions = ActionChains(driver)
+        actions.move_to_element(but).perform()
+        driver.execute_script("arguments[0].click();", but)
+        tablerow = driver.find_element_by_class_name("stats-table-container").find_elements_by_tag_name('tr')
 
         counter = 1
 
@@ -622,63 +590,32 @@ def league_data_away(leagues_url):
             away_position = counter
             away_total_clubs = len(tablerow)
             time.sleep(0.1)
-            away_team_name = row.find_element_by_xpath(
-                '//*[@id="table-type-3"]/tbody/tr[' + str(counter) + ']/td[2]/span[2]/a').get_attribute('textContent')
-            away_team_id = row.find_element_by_xpath(
-                '//*[@id="table-type-3"]/tbody/tr[' + str(counter) + ']/td[2]/span[2]/a').get_attribute('onclick')[
-                           -12:-4]
-            away_matches_played = int(
-                row.find_element_by_xpath('//*[@id="table-type-3"]/tbody/tr[' + str(counter) + ']/td[3]').get_attribute(
-                    'textContent'))
-            away_matches_won = int(
-                row.find_element_by_xpath('//*[@id="table-type-3"]/tbody/tr[' + str(counter) + ']/td[4]').get_attribute(
-                    'textContent'))
-            away_matches_draw = int(
-                row.find_element_by_xpath('//*[@id="table-type-3"]/tbody/tr[' + str(counter) + ']/td[5]').get_attribute(
-                    'textContent'))
-            away_matches_loss = int(
-                row.find_element_by_xpath('//*[@id="table-type-3"]/tbody/tr[' + str(counter) + ']/td[6]').get_attribute(
-                    'textContent'))
-            goal_fa = str(
-                row.find_element_by_xpath('//*[@id="table-type-3"]/tbody/tr[' + str(counter) + ']/td[7]').get_attribute(
-                    'textContent')).split(':')
+            tds = row.find_elements_by_tag_name('td')
+            
+            away_team_name = tds[1].find_element_by_tag_name('a').get_attribute('textContent')
+            away_team_id = tds[1].find_element_by_tag_name('a').get_attribute('onclick')[-12:-4]
+            away_matches_played = int(tds[2].get_attribute('textContent'))
+            away_matches_won = int(tds[3].get_attribute('textContent'))
+            away_matches_draw = int(tds[4].get_attribute('textContent'))
+            away_matches_loss = int(tds[5].get_attribute('textContent'))
+            goal_fa = str(tds[6].get_attribute('textContent')).split(':')
             away_goal_diff = int(goal_fa[0]) - int(goal_fa[1])
 
             form_list = []
             away_team_form = 0
 
-            try:
-                form_game1 = row.find_element_by_xpath(
-                    '//*[@id="table-type-3"]/tbody/tr[' + str(counter) + ']/td[9]/div/a[2]').get_attribute('class')[13]
-                form_list.append(form_game1)
-                form_game2 = row.find_element_by_xpath(
-                    '//*[@id="table-type-3"]/tbody/tr[' + str(counter) + ']/td[9]/div/a[3]').get_attribute('class')[13]
-                form_list.append(form_game2)
-                form_game3 = row.find_element_by_xpath(
-                    '//*[@id="table-type-3"]/tbody/tr[' + str(counter) + ']/td[9]/div/a[4]').get_attribute('class')[13]
-                form_list.append(form_game3)
-                form_game4 = row.find_element_by_xpath(
-                    '//*[@id="table-type-3"]/tbody/tr[' + str(counter) + ']/td[9]/div/a[5]').get_attribute('class')[13]
-                form_list.append(form_game4)
-                form_game5 = row.find_element_by_xpath(
-                    '//*[@id="table-type-3"]/tbody/tr[' + str(counter) + ']/td[9]/div/a[6]').get_attribute('class')[26]
-                form_list.append(form_game5)
-            except:
-                form_game1 = row.find_element_by_xpath(
-                    '//*[@id="table-type-3"]/tbody/tr[' + str(counter) + ']/td[9]/div/a[1]').get_attribute('class')[13]
-                form_list.append(form_game1)
-                form_game2 = row.find_element_by_xpath(
-                    '//*[@id="table-type-3"]/tbody/tr[' + str(counter) + ']/td[9]/div/a[2]').get_attribute('class')[13]
-                form_list.append(form_game2)
-                form_game3 = row.find_element_by_xpath(
-                    '//*[@id="table-type-3"]/tbody/tr[' + str(counter) + ']/td[9]/div/a[3]').get_attribute('class')[13]
-                form_list.append(form_game3)
-                form_game4 = row.find_element_by_xpath(
-                    '//*[@id="table-type-3"]/tbody/tr[' + str(counter) + ']/td[9]/div/a[4]').get_attribute('class')[13]
-                form_list.append(form_game4)
-                form_game5 = row.find_element_by_xpath(
-                    '//*[@id="table-type-3"]/tbody/tr[' + str(counter) + ']/td[9]/div/a[5]').get_attribute('class')[26]
-                form_list.append(form_game5)
+            formlist = row.find_element_by_class_name('matches-5').find_elements_by_tag_name('a')
+
+            form_game1 = formlist[0].get_attribute('class')[13]
+            form_list.append(form_game1)
+            form_game2 = formlist[1].get_attribute('class')[13]
+            form_list.append(form_game2)
+            form_game3 = formlist[2].get_attribute('class')[13]
+            form_list.append(form_game3)
+            form_game4 = formlist[3].get_attribute('class')[13]
+            form_list.append(form_game4)
+            form_game5 = formlist[4].get_attribute('class')[26]
+            form_list.append(form_game5)
 
             for form in form_list:
                 if form == 'w':
@@ -1994,8 +1931,8 @@ def tips_sect():
     start_time = time.time()
 
     # Create and manage restore points
-    backup_database()
-    delete_oldest_database()
+    #backup_database()
+    #delete_oldest_database()
 
     # Collect match and bet results
     match_results()

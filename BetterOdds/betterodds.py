@@ -371,8 +371,7 @@ def match_list_create(leagues_url):
         driver.get(league_url[0])
 
         # find scheduled matches
-        scheduled_matches = driver.find_element_by_xpath(
-            '//*[@id="fs-summary-fixtures"]/table/tbody').find_elements_by_tag_name('tr')
+        scheduled_matches = driver.find_element_by_id('fs-summary-fixtures').find_elements_by_tag_name('tr')
         for match in scheduled_matches:
             smatch_id = match.get_attribute('id')
             if len(smatch_id) > 0:
@@ -393,7 +392,6 @@ def match_list_create(leagues_url):
         except:
             continue
         # driver.close()
-    match_list = match_list[:5]
     return match_list
 
 
@@ -402,25 +400,23 @@ def match_info(match_list):
 
     total_matches = len(match_list)
     matches_scanned = 0
+    endpoint = ''
 
     for match_id in match_list:
         try:
             match_url = 'https://www.flashscore.com/match/' + match_id + '/#match-summary'
             driver.get(match_url)
-
             match_status = driver.find_element_by_css_selector(
                 '#flashscore >   div.team-primary-content > div.match-info > div.info-status.mstat').get_attribute(
                 'textContent')
             if match_status == 'Finished' or match_status == 'Postponed' or match_status == 'Cancelled':
                 continue
-
             match_datetime_raw = driver.find_element_by_xpath('//*[@id="utime"]').get_attribute('textContent')
-
+            ### 1 ENDED HERE
             match_datetime_split = match_datetime_raw.split(' ')
             match_time = match_datetime_split[1] + ':00'
             match_date = match_datetime_split[0].split('.')
             match_datetime = match_date[2] + '-' + match_date[1] + '-' + match_date[0] + ' ' + match_time
-
             match_country_name = str(driver.find_element_by_xpath(
                 '//*[@id="detcon"]/div[1]/div[2]/div[1]/div/div[1]/span[2]').get_attribute('textContent')
                                      ).split(':')[0].capitalize()
@@ -428,39 +424,48 @@ def match_info(match_list):
                 '//*[@id="detcon"]/div[1]/div[2]/div[1]/div/div[1]/span[2]/a').get_attribute(
                 'textContent')).split(' -')[0].strip()
             country_league_name = match_country_name + ' ' + match_league_name
-
             home_team_name = driver.find_element_by_xpath(
                 '//*[@id="flashscore"]/div[1]/div[1]/div[2]/div/div/a').get_attribute('textContent')
             away_team_name = driver.find_element_by_xpath(
                 '//*[@id="flashscore"]/div[1]/div[3]/div[2]/div/div/a').get_attribute('textContent')
-
             home_team_id = driver.find_element_by_xpath(
                 '//*[@id="flashscore"]/div[1]/div[1]/div[1]/div/a').get_attribute(
                 'onclick')[-25:-17]
             away_team_id = driver.find_element_by_xpath(
                 '//*[@id="flashscore"]/div[1]/div[3]/div[1]/div/a').get_attribute(
                 'onclick')[-25:-17]
-
-            home_win_odds = driver.find_element_by_xpath(
-                '//*[@id="default-odds"]/tbody/tr/td[2]/span/span[2]/span').get_attribute('textContent')
-            if home_win_odds == '-':
+            driver.implicitly_wait(0)
+            try:
+                home_win_odds = driver.find_element_by_xpath(
+                    '//*[@id="default-odds"]/tbody/tr/td[2]/span/span[2]/span').get_attribute('textContent')
+                if home_win_odds == '-':
+                    home_win_odds = 0.00
+            except:
                 home_win_odds = 0.00
-            away_win_odds = driver.find_element_by_xpath(
-                '//*[@id="default-odds"]/tbody/tr/td[4]/span/span[2]/span').get_attribute('textContent')
-            if away_win_odds == '-':
+            try:
+                away_win_odds = driver.find_element_by_xpath(
+                    '//*[@id="default-odds"]/tbody/tr/td[4]/span/span[2]/span').get_attribute('textContent')
+                if away_win_odds == '-':
+                    away_win_odds = 0.00
+            except:
                 away_win_odds = 0.00
             dc_odds_url = 'https://www.flashscore.com/match/' + match_id + '/#odds-comparison;double-chance;full-time'
             driver.get(dc_odds_url)
-
-            home_draw_odds = driver.find_element_by_xpath('//*[@id="odds_dch"]/tbody/tr[1]/td[2]/span').get_attribute(
-                'textContent')
-            if home_draw_odds == '-':
+            try:
+                home_draw_odds = driver.find_element_by_xpath('//*[@id="odds_dch"]/tbody/tr[1]/td[2]/span').get_attribute(
+                    'textContent')
+                if home_draw_odds == '-':
+                    home_draw_odds = 0.00
+            except:
                 home_draw_odds = 0.00
-            away_draw_odds = driver.find_element_by_xpath('//*[@id="odds_dch"]/tbody/tr[1]/td[4]/span').get_attribute(
-                'textContent')
-            if away_draw_odds == '-':
+            try:
+                away_draw_odds = driver.find_element_by_xpath('//*[@id="odds_dch"]/tbody/tr[1]/td[4]/span').get_attribute(
+                    'textContent')
+                if away_draw_odds == '-':
+                    away_draw_odds = 0.00
+            except:
                 away_draw_odds = 0.00
-
+            driver.implicitly_wait(30)
             main_cur.execute('''INSERT INTO match_data(match_datetime, country_name, league_name, country_league_name, 
             home_team_name, home_team_ID, away_team_name, away_team_ID, home_win, away_win, home_draw, away_draw, 
             match_url)
@@ -469,13 +474,11 @@ def match_info(match_list):
                               home_team_name, home_team_id, away_team_name, away_team_id, home_win_odds, away_win_odds,
                               home_draw_odds, away_draw_odds, match_url))
             main_conn.commit()
-
             matches_scanned += 1
             print("Scanning match", matches_scanned, "of", total_matches, "|", home_team_name, "vs", away_team_name)
-            # driver.close()
         except:
             matches_scanned += 1
-            print("Skipped match", matches_scanned, "of", total_matches, "|", match_url)
+            print("Skipped match", matches_scanned, "of", total_matches, "|", match_url, "| Ended:", endpoint)
             continue
 
 
@@ -503,7 +506,6 @@ def league_data_home(leagues_url):
         actions.move_to_element(but).perform()
         driver.execute_script("arguments[0].click();", but)
         tablerow = driver.find_element_by_class_name("stats-table-container").find_elements_by_tag_name('tr')
-        print(f"Tablerows: {len(tablerow)}")
         #tablerow = driver.find_element_by_xpath('//*[@id="table-type-1"]/tbody').find_elements_by_tag_name('tr')
         counter = 1
 
@@ -514,7 +516,6 @@ def league_data_home(leagues_url):
             home_position = counter
             home_total_clubs = len(tablerow)
             tds = row.find_elements_by_tag_name('td')
-            print(f"TDS: {len(tds)}")
             home_team_name = tds[1].find_element_by_tag_name('a').get_attribute('textContent')
             home_team_id = tds[1].find_element_by_tag_name('a').get_attribute('onclick')[-12:-4]
             home_matches_played = int(tds[2].get_attribute('textContent'))
@@ -583,7 +584,7 @@ def league_data_away(leagues_url):
 
         counter = 1
 
-        for row in tablerow:
+        for row in tablerow[1:]:
             country_name = driver.find_element_by_xpath('//*[@id="mc"]/h2/a[2]').get_attribute('textContent')
             league_name = driver.find_element_by_xpath('//*[@id="fscon"]/div[1]/div[2]').get_attribute('textContent')
             country_league_name = country_name + ' ' + league_name
